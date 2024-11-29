@@ -1,0 +1,115 @@
+> library(readr)
+> library(caret)
+> library(randomForest)
+> 
+> # Data loading
+> train <- read_csv("/Users/fangyuliu/Downloads/pml-training.csv", na = c("", "NA", "#DIV/0!"), show_col_types = FALSE)
+New names:                                                                                                                              
+• `` -> `...1`
+> test <- read_csv("/Users/fangyuliu/Downloads/pml-testing.csv", na = c("", "NA", "#DIV/0!"), show_col_types = FALSE)
+New names:                                                                                                                              
+• `` -> `...1`
+> 
+> # Data splitting
+> set.seed(2139)
+> trainset <- createDataPartition(train$classe, p = 0.8, list = FALSE)
+> Training <- train[trainset, ]
+> Validation <- train[-trainset, ]
+> 
+> # Remove near-zero variance features
+> nonzerocol <- nearZeroVar(Training)
+> Training <- Training[, -nonzerocol]
+> 
+> # Remove descriptive and columns with excessive missing values
+> countlength <- colSums(!is.na(Training))
+> nullCol <- names(countlength[countlength < 0.6 * nrow(Training)])
+> descriptcol <- c("X", "user_name", "raw_timestamp_part_1", "raw_timestamp_part_2", 
++                  "cvtd_timestamp", "new_window", "num_window")
+> excludecolumns <- c(descriptcol, nullCol)
+> Training <- Training[, !names(Training) %in% excludecolumns]
+> 
+> # Model training
+> rfModel <- randomForest(as.factor(classe) ~ ., data = Training, importance = TRUE, ntree = 10)
+> 
+> # Training set prediction
+> ptraining <- predict(rfModel, Training)
+> u1 <- union(ptraining, Training$classe)
+> t1 <- table(factor(ptraining, u1), factor(Training$classe, u1))
+> print(confusionMatrix(t1))
+Confusion Matrix and Statistics
+
+   
+       A    B    C    D    E
+  A 4464    0    0    0    0
+  B    0 3038    0    0    0
+  C    0    0 2738    0    0
+  D    0    0    0 2573    0
+  E    0    0    0    0 2886
+
+Overall Statistics
+                                     
+               Accuracy : 1          
+                 95% CI : (0.9998, 1)
+    No Information Rate : 0.2843     
+    P-Value [Acc > NIR] : < 2.2e-16  
+                                     
+                  Kappa : 1          
+                                     
+ Mcnemar's Test P-Value : NA         
+
+Statistics by Class:
+
+                     Class: A Class: B Class: C Class: D Class: E
+Sensitivity            1.0000   1.0000   1.0000   1.0000   1.0000
+Specificity            1.0000   1.0000   1.0000   1.0000   1.0000
+Pos Pred Value         1.0000   1.0000   1.0000   1.0000   1.0000
+Neg Pred Value         1.0000   1.0000   1.0000   1.0000   1.0000
+Prevalence             0.2843   0.1935   0.1744   0.1639   0.1838
+Detection Rate         0.2843   0.1935   0.1744   0.1639   0.1838
+Detection Prevalence   0.2843   0.1935   0.1744   0.1639   0.1838
+Balanced Accuracy      1.0000   1.0000   1.0000   1.0000   1.0000
+> 
+> # Validation set prediction
+> pvalidation <- predict(rfModel, Validation)
+> u2 <- union(pvalidation, Validation$classe)
+> t2 <- table(factor(pvalidation, u2), factor(Validation$classe, u2))
+> print(confusionMatrix(t2))
+Confusion Matrix and Statistics
+
+   
+       A    B    C    D    E
+  A 1116    0    0    0    0
+  B    0  759    0    0    0
+  C    0    0  684    0    0
+  D    0    0    0  642    0
+  E    0    0    0    1  721
+
+Overall Statistics
+                                     
+               Accuracy : 0.9997     
+                 95% CI : (0.9986, 1)
+    No Information Rate : 0.2845     
+    P-Value [Acc > NIR] : < 2.2e-16  
+                                     
+                  Kappa : 0.9997     
+                                     
+ Mcnemar's Test P-Value : NA         
+
+Statistics by Class:
+
+                     Class: A Class: B Class: C Class: D Class: E
+Sensitivity            1.0000   1.0000   1.0000   0.9984   1.0000
+Specificity            1.0000   1.0000   1.0000   1.0000   0.9997
+Pos Pred Value         1.0000   1.0000   1.0000   1.0000   0.9986
+Neg Pred Value         1.0000   1.0000   1.0000   0.9997   1.0000
+Prevalence             0.2845   0.1935   0.1744   0.1639   0.1838
+Detection Rate         0.2845   0.1935   0.1744   0.1637   0.1838
+Detection Prevalence   0.2845   0.1935   0.1744   0.1637   0.1840
+Balanced Accuracy      1.0000   1.0000   1.0000   0.9992   0.9998
+> 
+> # Test set prediction
+> ptest <- predict(rfModel, test)
+> ptest
+ 1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 
+ A  A  A  A  A  A  A  A  A  A  A  A  A  A  A  A  A  B  A  B 
+Levels: A B C D E
